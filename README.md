@@ -1,4 +1,10 @@
-# 🛒 Siroko Cart & Checkout API
+# 🛒 Cart & Checkout API
+
+A backend API implementing a shopping cart and checkout system using Domain-Driven Design (DDD) principles.
+
+The project demonstrates a decoupled domain model, CQRS command handlers and domain events while keeping the business logic independent from the Symfony framework.
+
+It was developed as part of a senior backend code challenge.
 
 ## 📦 Features
 
@@ -79,6 +85,8 @@ composer test
 - Doctrine ORM
 - PHPUnit
 - Docker
+- DDD
+- CQRS
 - Postman (for API testing)
 
 ## 🧠 Architecture
