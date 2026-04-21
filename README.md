@@ -1,112 +1,106 @@
 # 🛒 Cart & Checkout API
 
-A backend API implementing a shopping cart and checkout system using Domain-Driven Design (DDD) principles.
+Backend API for a shopping cart and checkout system built with **PHP and Symfony**, applying **DDD, CQRS and clean architecture principles**.
 
-The project demonstrates a decoupled domain model, CQRS command handlers and domain events while keeping the business logic independent from the Symfony framework.
+This project demonstrates how to design a scalable and maintainable backend system with a fully decoupled domain model.
 
-It was developed as part of a senior backend code challenge.
+Developed as part of a **senior backend engineering code challenge**.
+
+## 🚀 Key Highlights
+
+- Domain fully decoupled from framework (Symfony-agnostic core)
+- Implementation of **DDD + CQRS**
+- Use of **Domain Events** for key business actions
+- Clean separation of layers (Domain / Application / Infrastructure)
+- Full test coverage across business logic and application flows
 
 ## 📦 Features
 
-- Add, update, and remove products in the cart.
-- Retrieve cart contents.
-- Checkout and generate persistent orders.
-- Full domain decoupling from the Symfony framework.
-- Domain events for all key actions.
-
-## 📑 OpenAPI Specification
-
-- Although not provided in YAML format, the collection is exported via Postman and included in the repository:
-
-🗂️ postman/SirokoCartAPI.postman_collection.json
-🌍 Uses the environment variable: base_url → http://127.0.0.1:8000
-
-### 🔧 Endpoints - Cart
-
-- POST /cart/{cartId}/items – Add item to cart
-- PATCH /cart/{cartId}/items/{productId} – Update item quantity
-- DELETE /cart/{cartId}/items/{productId} – Remove item
-- GET /cart/{cartId} – View cart contents
-- GET /carts – View all carts (for debugging)
-- DELETE /cart/{cartId} – Empty entire cart
-
-### 🔧 Endpoints - Checkout
-
-- POST /checkout/{cartId} – Finalize cart and generate order
-- GET /orders – View all generated orders
-
-## 🧱 Domain Model
-
-- Cart → Root aggregate holding CartItems
-- CartItem → Line in cart, containing product + qty + price
-- Order → Immutable order after checkout
-- Value Objects: Money, Currency, Quantity, Product
-
-## Domain Events
-
-- ProductAddedToCart
-- ProductQuantityUpdatedInCart
-- ProductRemovedFromCart
-- CartEmptied
-- OrderCreated
-- These events are dispatched internally using a custom EventBus (prints messages to the console).
-
-## 🧪 Testing
-
-- Unit tests: Value objects and business rules
-- Integration tests: Command handlers and repository behaviors
-- Functional tests: HTTP requests (using Symfony client)
-- Persistence tests: Doctrine repositories with SQLite
-- Run tests with:
-
-composer test
-
-✅ 100% pass rate (30/30)
-
-## ⚙️ Setup with Docker
-
-- 1. Clone the repository:
-
-    git clone https://github.com/JamDesigns/siroko-cart-api.git
-    cd siroko-cart-api
-- 2. Install dependencies:
-
-    composer install
-- 3. Build and run the app:
-
-    docker-compose build
-    docker-compose up -d
-- Application will be available at http://localhost:8000
-
-## 🛠️ Tech Stack
-
-- PHP 8.4
-- Symfony 6
-- Doctrine ORM
-- PHPUnit
-- Docker
-- DDD
-- CQRS
-- Postman (for API testing)
+- Add, update and remove products in the cart
+- Retrieve cart contents
+- Checkout process generating persistent orders
+- Domain events triggered on all key actions
 
 ## 🧠 Architecture
 
-- Domain layer: Framework-agnostic core logic
-- Application layer: CQRS Command Handlers
-- Infrastructure layer: Doctrine + Symfony Controllers
+- **Domain Layer** → Core business logic (framework independent)
+- **Application Layer** → Command Handlers (CQRS)
+- **Infrastructure Layer** → Symfony + Doctrine integration
 
-## 🔀 Git Workflow
+### Domain Model
 
-- Feature branches: feature/<name>
-- Pull Requests: Used to merge into master
-- Commit messages: Imperative, clean, English
+- `Cart` (Aggregate Root)
+- `CartItem`
+- `Order`
+- Value Objects: `Money`, `Currency`, `Quantity`, `Product`
 
-## 📁 Postman Collection
+### Domain Events
 
-- Included in the repo: postman/SirokoCartAPI.postman_collection.json
-- Uses base_url variable: http://localhost:8000
-- You can import the environment and collection into Postman directly.
+- ProductAddedToCart  
+- ProductQuantityUpdatedInCart  
+- ProductRemovedFromCart  
+- CartEmptied  
+- OrderCreated  
 
-- ✍️ Developed for Siroko - Senior Code Challenge
-- 👤 By: José Ángel Mosquera Rodríguez
+## 🔧 API Endpoints
 
+### Cart
+
+- `POST /cart/{cartId}/items`
+- `PATCH /cart/{cartId}/items/{productId}`
+- `DELETE /cart/{cartId}/items/{productId}`
+- `GET /cart/{cartId}`
+- `GET /carts`
+- `DELETE /cart/{cartId}`
+
+### Checkout
+
+- `POST /checkout/{cartId}`
+- `GET /orders`
+
+## 🧪 Testing
+
+- Unit tests → business rules and value objects  
+- Integration tests → command handlers and persistence  
+- Functional tests → HTTP endpoints  
+
+Run tests:
+
+```bash
+composer test
+```
+
+✔️ 100% pass rate
+
+## ⚙️ Setup
+
+```bash
+git clone https://github.com/JamDesigns/cart-api.git
+cd cart-api
+composer install
+docker-compose up -d
+```
+
+App available at:
+
+👉 http://localhost:8000
+
+## 🛠️ Tech Stack
+
+- PHP 8  
+- Symfony 6  
+- Doctrine ORM  
+- PHPUnit  
+- Docker  
+- DDD / CQRS  
+
+## 📄 API Testing
+
+Postman collection included:
+
+`postman/SirokoCartAPI.postman_collection.json`
+
+## 👤 Author
+
+José Ángel Mosquera Rodríguez  
+Senior PHP Backend Developer
