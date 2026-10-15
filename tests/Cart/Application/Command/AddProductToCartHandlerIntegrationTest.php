@@ -1,14 +1,15 @@
 <?php
-
 namespace App\Tests\Cart\Application\Command;
 
-use App\Cart\Application\Command\AddProductToCartCommand;
-use App\Cart\Application\Command\AddProductToCartHandler;
-use App\Cart\Application\Command\RemoveProductFromCartCommand;
-use App\Cart\Application\Command\RemoveProductFromCartHandler;
+use App\Cart\Application\Command\AddProductToCart\AddProductToCartCommand;
+use App\Cart\Application\Command\AddProductToCart\AddProductToCartHandler;
+use App\Cart\Application\Command\RemoveProductFromCart\RemoveProductFromCartCommand;
+use App\Cart\Application\Command\RemoveProductFromCart\RemoveProductFromCartHandler;
 use App\Cart\Domain\Model\Currency;
 use App\Cart\Infrastructure\Persistence\InMemoryCartRepository;
+use App\Shared\Domain\Event\EventBus;
 use PHPUnit\Framework\TestCase;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 class AddProductToCartHandlerIntegrationTest extends TestCase
 {
@@ -16,14 +17,15 @@ class AddProductToCartHandlerIntegrationTest extends TestCase
     {
         echo "🧪 Running integration test: AddProductToCartHandler\n";
 
-        $repo = new InMemoryCartRepository();
-        $handler = new AddProductToCartHandler($repo);
+        $repo     = new InMemoryCartRepository();
+        $eventBus = new EventBus($this->createMock(EventDispatcherInterface::class));
+        $handler  = new AddProductToCartHandler($repo, $eventBus);
 
-        $cartId = 'test-cart-1';
-        $product = '00000000-0000-0000-0000-000000000001';
-        $quantity = 3;
+        $cartId    = 'test-cart-1';
+        $product   = '00000000-0000-0000-0000-000000000001';
+        $quantity  = 3;
         $unitPrice = 1200; // €12.00
-        $currency = new Currency('EUR');
+        $currency  = new Currency('EUR');
 
         $command = new AddProductToCartCommand($cartId, $product, $quantity, $unitPrice, $currency);
 
@@ -42,11 +44,12 @@ class AddProductToCartHandlerIntegrationTest extends TestCase
     {
         echo "➕ Running integration test: update quantity if product already exists in cart\n";
 
-        $repo = new InMemoryCartRepository();
-        $handler = new AddProductToCartHandler($repo);
+        $repo     = new InMemoryCartRepository();
+        $eventBus = new EventBus($this->createMock(EventDispatcherInterface::class));
+        $handler  = new AddProductToCartHandler($repo, $eventBus);
 
-        $cartId = 'test-cart-2';
-        $product = '00000000-0000-0000-0000-000000000002';
+        $cartId   = 'test-cart-2';
+        $product  = '00000000-0000-0000-0000-000000000002';
         $currency = new Currency('EUR');
 
         $handler(new AddProductToCartCommand($cartId, $product, 2, 1000, $currency));
@@ -64,11 +67,12 @@ class AddProductToCartHandlerIntegrationTest extends TestCase
     {
         echo "🗑️  Running integration test: remove product from cart (via handler)\n";
 
-        $repo = new InMemoryCartRepository();
-        $addHandler = new AddProductToCartHandler($repo);
-        $removeHandler = new RemoveProductFromCartHandler($repo);
+        $repo          = new InMemoryCartRepository();
+        $eventBus      = new EventBus($this->createMock(EventDispatcherInterface::class));
+        $addHandler    = new AddProductToCartHandler($repo, $eventBus);
+        $removeHandler = new RemoveProductFromCartHandler($repo, $eventBus);
 
-        $cartId = 'test-cart-3';
+        $cartId   = 'test-cart-3';
         $product1 = '00000000-0000-0000-0000-000000000003';
         $product2 = '00000000-0000-0000-0000-000000000004';
         $currency = new Currency('EUR');

@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Checkout\Infrastructure\Persistence\Doctrine;
 
 use Doctrine\ORM\Mapping as ORM;
@@ -17,7 +16,7 @@ class OrderItemEntity
     #[ORM\JoinColumn(nullable: false)]
     private OrderEntity $order;
 
-    #[ORM\Column(type: 'string', length: 36)]
+    #[ORM\Column(name: 'product_id', type: 'string', length: 36)]
     private string $product;
 
     #[ORM\Column(type: 'integer')]
@@ -28,8 +27,8 @@ class OrderItemEntity
 
     public function __construct(string $product, int $quantity, int $unitPrice)
     {
-        $this->product = $product;
-        $this->quantity = $quantity;
+        $this->product   = $product;
+        $this->quantity  = $quantity;
         $this->unitPrice = $unitPrice;
     }
 

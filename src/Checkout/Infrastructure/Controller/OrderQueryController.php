@@ -1,34 +1,28 @@
 <?php
-
 namespace App\Checkout\Infrastructure\Controller;
 
-use App\Checkout\Domain\Repository\OrderRepository;
+use App\Checkout\Application\Query\GetOrders\GetOrdersHandler;
+use App\Checkout\Application\Query\GetOrders\GetOrdersQuery;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
 
 class OrderQueryController extends AbstractController
 {
-    public function __construct(private readonly OrderRepository $repository) {}
+    public function __construct(
+        private readonly GetOrdersHandler $handler
+    ) {}
 
     #[Route('/orders', name: 'order_list', methods: ['GET'])]
     public function __invoke(): JsonResponse
     {
-        $orders = $this->repository->findAll();
+        $orders = ($this->handler)(new GetOrdersQuery());
 
-        $data = array_map(function ($order) {
-            return [
-                'id' => $order->id(),
-                'total' => $order->total(),
-                'currency' => $order->currency(),
-                'items' => array_map(fn ($item) => [
-                    'product' => $item->getProduct(),
-                    'quantity' => $item->getQuantity(),
-                    'unitPrice' => $item->getUnitPrice(),
-                ], $order->items()),
-            ];
-        }, $orders);
-
-        return $this->json($data);
+        return $this->json(
+            array_map(
+                static fn($order) => $order->toArray(),
+                $orders
+            )
+        );
     }
 }

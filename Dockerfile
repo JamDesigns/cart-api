@@ -36,6 +36,15 @@ RUN a2enmod rewrite \
     && chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html
 
+# Install the container startup script
+COPY ./docker/entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+
+# Make the startup script executable
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Prepare writable directories before starting Apache
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+
 # Expose the port for Symfony to run
 EXPOSE 8000
 

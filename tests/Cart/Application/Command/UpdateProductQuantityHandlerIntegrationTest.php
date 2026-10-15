@@ -1,14 +1,15 @@
 <?php
-
 namespace App\Tests\Cart\Application\Command;
 
-use App\Cart\Application\Command\AddProductToCartCommand;
-use App\Cart\Application\Command\AddProductToCartHandler;
-use App\Cart\Application\Command\UpdateProductQuantityCommand;
-use App\Cart\Application\Command\UpdateProductQuantityHandler;
+use App\Cart\Application\Command\AddProductToCart\AddProductToCartCommand;
+use App\Cart\Application\Command\AddProductToCart\AddProductToCartHandler;
+use App\Cart\Application\Command\UpdateProductQuantity\UpdateProductQuantityCommand;
+use App\Cart\Application\Command\UpdateProductQuantity\UpdateProductQuantityHandler;
 use App\Cart\Domain\Model\Currency;
 use App\Cart\Infrastructure\Persistence\InMemoryCartRepository;
+use App\Shared\Domain\Event\EventBus;
 use PHPUnit\Framework\TestCase;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 class UpdateProductQuantityHandlerIntegrationTest extends TestCase
 {
@@ -16,12 +17,14 @@ class UpdateProductQuantityHandlerIntegrationTest extends TestCase
     {
         echo "✏️  Running integration test: UpdateProductQuantityHandler\n";
 
-        $repo = new InMemoryCartRepository();
-        $addHandler = new AddProductToCartHandler($repo);
-        $updateHandler = new UpdateProductQuantityHandler($repo);
+        $repo     = new InMemoryCartRepository();
+        $eventBus = new EventBus($this->createMock(EventDispatcherInterface::class));
 
-        $cartId = 'test-cart-5';
-        $product = '00000000-0000-0000-0000-000000000007';
+        $addHandler    = new AddProductToCartHandler($repo, $eventBus);
+        $updateHandler = new UpdateProductQuantityHandler($repo, $eventBus);
+
+        $cartId   = 'test-cart-5';
+        $product  = '00000000-0000-0000-0000-000000000007';
         $currency = new Currency('EUR');
 
         // Add product with quantity 2
@@ -42,10 +45,12 @@ class UpdateProductQuantityHandlerIntegrationTest extends TestCase
     {
         echo "💥 Running integration test: update non-existent product quantity\n";
 
-        $repo = new InMemoryCartRepository();
-        $updateHandler = new UpdateProductQuantityHandler($repo);
+        $repo     = new InMemoryCartRepository();
+        $eventBus = new EventBus($this->createMock(EventDispatcherInterface::class));
 
-        $cartId = 'test-cart-6';
+        $updateHandler = new UpdateProductQuantityHandler($repo, $eventBus);
+
+        $cartId  = 'test-cart-6';
         $product = '00000000-0000-0000-0000-000000000099';
 
         // Manually create a cart (empty, without products)

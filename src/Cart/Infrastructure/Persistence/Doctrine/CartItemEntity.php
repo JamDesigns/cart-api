@@ -1,11 +1,14 @@
 <?php
-
 namespace App\Cart\Infrastructure\Persistence\Doctrine;
 
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'cart_items')]
+#[ORM\UniqueConstraint(
+    name: 'UNIQ_CART_ITEM_PRODUCT',
+    columns: ['cart_id', 'product_id']
+)]
 class CartItemEntity
 {
     #[ORM\Id]
@@ -17,7 +20,7 @@ class CartItemEntity
     #[ORM\JoinColumn(name: 'cart_id', referencedColumnName: 'id', nullable: false, onDelete: 'CASCADE')]
     private CartEntity $cart;
 
-    #[ORM\Column(type: 'string', length: 36)]
+    #[ORM\Column(name: 'product_id', type: 'string', length: 36)]
     private string $product;
 
     #[ORM\Column(type: 'integer')]
@@ -31,11 +34,11 @@ class CartItemEntity
 
     public function __construct(CartEntity $cart, string $product, int $quantity, int $unitPrice, string $currency)
     {
-        $this->cart = $cart;
-        $this->product = $product;
-        $this->quantity = $quantity;
+        $this->cart      = $cart;
+        $this->product   = $product;
+        $this->quantity  = $quantity;
         $this->unitPrice = $unitPrice;
-        $this->currency = $currency;
+        $this->currency  = $currency;
     }
 
     public function getProductId(): string
@@ -56,5 +59,17 @@ class CartItemEntity
     public function getCurrency(): string
     {
         return $this->currency;
+    }
+
+    /**
+     * Updates the persisted quantity of a cart item.
+     *
+     * @param int $quantity
+     *
+     * @return void
+     */
+    public function updateQuantity(int $quantity): void
+    {
+        $this->quantity = $quantity;
     }
 }
