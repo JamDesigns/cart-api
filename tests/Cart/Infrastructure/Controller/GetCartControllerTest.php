@@ -1,27 +1,33 @@
 <?php
+    namespace App\Tests\Cart\Infrastructure\Controller;
 
-namespace App\Tests\Cart\Infrastructure\Controller;
+    use App\Cart\Application\Command\AddProductToCart\AddProductToCartCommand;
+    use App\Cart\Application\Command\AddProductToCart\AddProductToCartHandler;
+    use App\Cart\Domain\Model\Currency;
+    use Doctrine\ORM\EntityManagerInterface;
+    use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+    use Symfony\Component\Uid\Uuid;
 
-use App\Cart\Application\Command\AddProductToCartCommand;
-use App\Cart\Application\Command\AddProductToCartHandler;
-use App\Cart\Domain\Model\Currency;
-use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+    class GetCartControllerTest extends WebTestCase
+    {
+    private ?string $cartId = null;
 
-class GetCartControllerTest extends WebTestCase
-{
+    /**
+     * Verifies that the API returns the details of an existing cart.
+     */
     public function test_it_returns_cart_details(): void
     {
         echo "🧪 Running functional test: GET /cart/{id}\n";
 
-        $client = static::createClient();
+        $client    = static::createClient();
         $container = static::getContainer();
 
-        $repo = $container->get(\App\Cart\Infrastructure\Persistence\Doctrine\DoctrineCartRepository::class);
         $handler = $container->get(AddProductToCartHandler::class);
 
-        $cartId = 'test-cart-controller';
-        $productId = '00000000-0000-0000-0000-000000000999';
+        $cartId    = Uuid::v4()->toRfc4122();
+        $productId = Uuid::v4()->toRfc4122();
+
+        $this->cartId = $cartId;
 
         // Preload cart using handler
         $handler(new AddProductToCartCommand(
@@ -47,12 +53,28 @@ class GetCartControllerTest extends WebTestCase
         $this->assertEquals($productId, $responseData['items'][0]['product']);
     }
 
+    /**
+     * Removes only the cart and cart items created by this test.
+     */
     protected function tearDown(): void
     {
-        parent::tearDown();
+        try {
+            if ($this->cartId !== null) {
+                $em         = static::getContainer()->get(EntityManagerInterface::class);
+                $connection = $em->getConnection();
 
-        $em = static::getContainer()->get(EntityManagerInterface::class);
-        $em->createQuery('DELETE FROM App\Cart\Infrastructure\Persistence\Doctrine\CartItemEntity')->execute();
-        $em->createQuery('DELETE FROM App\Cart\Infrastructure\Persistence\Doctrine\CartEntity')->execute();
+                $connection->executeStatement(
+                    'DELETE FROM cart_items WHERE cart_id = :cartId',
+                    ['cartId' => $this->cartId]
+                );
+
+                $connection->executeStatement(
+                    'DELETE FROM carts WHERE id = :cartId',
+                    ['cartId' => $this->cartId]
+                );
+            }
+        } finally {
+            parent::tearDown();
+        }
     }
 }

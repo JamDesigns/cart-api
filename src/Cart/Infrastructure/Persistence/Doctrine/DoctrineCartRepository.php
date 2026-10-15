@@ -1,68 +1,77 @@
 <?php
-
 namespace App\Cart\Infrastructure\Persistence\Doctrine;
 
 use App\Cart\Domain\Model\Cart;
 use App\Cart\Domain\Repository\CartRepository;
 use Doctrine\ORM\EntityManagerInterface;
-use App\Cart\Infrastructure\Persistence\Doctrine\CartEntity;
-use App\Cart\Infrastructure\Persistence\Doctrine\CartItemEntity;
 
 class DoctrineCartRepository implements CartRepository
 {
-    public function __construct(private EntityManagerInterface $em) {}
+    public function __construct(private EntityManagerInterface $em)
+    {}
 
     public function save(Cart $cart): void
     {
         $cartEntity = $this->em->find(CartEntity::class, $cart->id());
 
-        if (!$cartEntity) {
+        if (! $cartEntity) {
             $cartEntity = new CartEntity($cart->id());
             $this->em->persist($cartEntity);
         }
 
-        // Remove existing items (orphanRemoval=true)
-        foreach ($cartEntity->getItems() as $existingItem) {
-            $cartEntity->getItems()->removeElement($existingItem);
+        // Index existing items by product identifier
+        $existingItems = [];
+
+        foreach ($cartEntity->getItems() as $itemEntity) {
+            $existingItems[$itemEntity->getProductId()] = $itemEntity;
         }
 
-        // Map Domain CartItems to CartItemEntities
+        // Synchronize domain items with persistence entities
         foreach ($cart->items() as $item) {
-            $itemEntity = new CartItemEntity(
-                $cartEntity,
-                $item->product()->toPrimitives(),
-                $item->quantity()->toPrimitives(),
-                $item->unitPrice()->amount(),
-                $item->unitPrice()->currency()->code()
-            );
+            $productId = $item->product()->value();
 
-            $cartEntity->addItem($itemEntity);
+            if (isset($existingItems[$productId])) {
+                $existingItems[$productId]->updateQuantity(
+                    $item->quantity()->value()
+                );
+
+                unset($existingItems[$productId]);
+
+                continue;
+            }
+
+            $cartEntity->addItem(
+                new CartItemEntity(
+                    $cartEntity,
+                    $productId,
+                    $item->quantity()->value(),
+                    $item->unitPrice()->amount(),
+                    $item->unitPrice()->currency()->code()
+                )
+            );
+        }
+
+        // Remove items no longer present in the domain cart
+        foreach ($existingItems as $itemEntity) {
+            $cartEntity->removeItem($itemEntity);
         }
 
         $cartEntity->setUpdatedAt(new \DateTimeImmutable());
         $this->em->flush();
     }
 
+    /**
+     * Finds a cart by its identifier.
+     *
+     * @param string $id
+     *
+     * @return Cart|null
+     */
     public function find(string $id): ?Cart
     {
-        $cartEntity = $this->em->find(CartEntity::class, $id);
-        if (!$cartEntity) {
-            return null;
-        }
+        $entity = $this->em->find(CartEntity::class, $id);
 
-        $items = [];
-        foreach ($cartEntity->getItems() as $itemEntity) {
-            $items[] = [
-                'product'   => $itemEntity->getProductId(),
-                'quantity'  => $itemEntity->getQuantity(),
-                'unitPrice' => [
-                    'amountInCents' => $itemEntity->getUnitPrice(),
-                    'currency'      => $itemEntity->getCurrency(),
-                ],
-            ];
-        }
-
-        return Cart::fromPrimitives($cartEntity->getId(), $items);
+        return $entity ? $this->toDomain($entity) : null;
     }
 
     public function delete(string $id): void
@@ -74,24 +83,43 @@ class DoctrineCartRepository implements CartRepository
         }
     }
 
+    /**
+     * Retrieves all carts.
+     *
+     * @return Cart[]
+     */
     public function all(): array
     {
-        $cartEntities = $this->em->getRepository(CartEntity::class)->findAll();
+        $entities = $this->em->getRepository(CartEntity::class)->findAll();
 
-        return array_map(function (CartEntity $entity) {
-            $items = [];
-            foreach ($entity->getItems() as $itemEntity) {
-                $items[] = [
-                    'product'   => $itemEntity->getProductId(),
-                    'quantity'  => $itemEntity->getQuantity(),
-                    'unitPrice' => [
-                        'amountInCents' => $itemEntity->getUnitPrice(),
-                        'currency'      => $itemEntity->getCurrency(),
-                    ],
-                ];
-            }
+        return array_map(
+            fn(CartEntity $entity) => $this->toDomain($entity),
+            $entities
+        );
+    }
 
-            return Cart::fromPrimitives($entity->getId(), $items);
-        }, $cartEntities);
+    /**
+     * Reconstructs a domain cart from its persistence entity.
+     *
+     * @param CartEntity $entity
+     *
+     * @return Cart
+     */
+    private function toDomain(CartEntity $entity): Cart
+    {
+        $items = [];
+
+        foreach ($entity->getItems() as $itemEntity) {
+            $items[] = [
+                'product'   => $itemEntity->getProductId(),
+                'quantity'  => $itemEntity->getQuantity(),
+                'unitPrice' => [
+                    'amountInCents' => $itemEntity->getUnitPrice(),
+                    'currency'      => $itemEntity->getCurrency(),
+                ],
+            ];
+        }
+
+        return Cart::fromPrimitives($entity->getId(), $items);
     }
 }

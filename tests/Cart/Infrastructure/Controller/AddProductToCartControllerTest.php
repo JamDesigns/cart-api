@@ -1,29 +1,36 @@
 <?php
+    namespace App\Tests\Cart\Infrastructure\Controller;
 
-namespace App\Tests\Cart\Infrastructure\Controller;
+    use Doctrine\ORM\EntityManagerInterface;
+    use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+    use Symfony\Component\Uid\Uuid;
 
-use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+    class AddProductToCartControllerTest extends WebTestCase
+    {
+    private ?string $cartId = null;
 
-class AddProductToCartControllerTest extends WebTestCase
-{
+    /**
+     * Verifies that a product can be added to a cart through the API.
+     */
     public function test_it_adds_product_to_cart(): void
     {
-        echo "🧪 Running functional test: POST /cart/{id}/items\n";
+        echo "🧪 Running functional test: POST /cart/{id}/product\n";
 
         $client = static::createClient();
 
-        $cartId = 'test-cart-api-add';
+        $cartId       = Uuid::v4()->toRfc4122();
+        $this->cartId = $cartId;
+
         $payload = [
-            'product' => '11111111-1111-1111-1111-111111111111',
-            'quantity' => 3,
+            'product'   => Uuid::v4()->toRfc4122(),
+            'quantity'  => 3,
             'unitPrice' => 2000, // 20 €
-            'currency' => 'EUR'
+            'currency'  => 'EUR',
         ];
 
         $client->request(
             'POST',
-            "/cart/{$cartId}/items",
+            "/cart/{$cartId}/product",
             [],
             [],
             ['CONTENT_TYPE' => 'application/json'],
@@ -37,12 +44,28 @@ class AddProductToCartControllerTest extends WebTestCase
         $this->assertEquals('Product added to cart', $data['message'] ?? null);
     }
 
+    /**
+     * Removes only the cart and cart items created by this test.
+     */
     protected function tearDown(): void
     {
-        parent::tearDown();
+        try {
+            if ($this->cartId !== null) {
+                $em         = static::getContainer()->get(EntityManagerInterface::class);
+                $connection = $em->getConnection();
 
-        $em = static::getContainer()->get(EntityManagerInterface::class);
-        $em->createQuery('DELETE FROM App\Cart\Infrastructure\Persistence\Doctrine\CartItemEntity')->execute();
-        $em->createQuery('DELETE FROM App\Cart\Infrastructure\Persistence\Doctrine\CartEntity')->execute();
+                $connection->executeStatement(
+                    'DELETE FROM cart_items WHERE cart_id = :cartId',
+                    ['cartId' => $this->cartId]
+                );
+
+                $connection->executeStatement(
+                    'DELETE FROM carts WHERE id = :cartId',
+                    ['cartId' => $this->cartId]
+                );
+            }
+        } finally {
+            parent::tearDown();
+        }
     }
 }

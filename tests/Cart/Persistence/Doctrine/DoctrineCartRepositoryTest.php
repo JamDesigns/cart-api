@@ -1,18 +1,19 @@
 <?php
-
 namespace App\Tests\Cart\Infrastructure\Persistence\Doctrine;
 
-use App\Cart\Application\Command\AddProductToCartCommand;
-use App\Cart\Application\Command\AddProductToCartHandler;
+use App\Cart\Application\Command\AddProductToCart\AddProductToCartCommand;
+use App\Cart\Application\Command\AddProductToCart\AddProductToCartHandler;
 use App\Cart\Domain\Model\Cart;
+use App\Cart\Domain\Model\Currency;
+use App\Cart\Domain\Model\Money;
 use App\Cart\Domain\Model\Product;
 use App\Cart\Domain\Model\Quantity;
-use App\Cart\Domain\Model\Money;
-use App\Cart\Domain\Model\Currency;
 use App\Cart\Infrastructure\Persistence\Doctrine\DoctrineCartRepository;
-use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use App\Shared\Domain\Event\EventBus;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 class DoctrineCartRepositoryTest extends KernelTestCase
 {
@@ -27,21 +28,23 @@ class DoctrineCartRepositoryTest extends KernelTestCase
         self::bootKernel();
         $this->em = static::getContainer()->get(EntityManagerInterface::class);
 
-        $schemaTool = new \Doctrine\ORM\Tools\SchemaTool($this->em);
-        $metadata = $this->em->getMetadataFactory()->getAllMetadata();
-        $schemaTool->dropSchema($metadata);
-        $schemaTool->createSchema($metadata);
+        $this->em->getConnection()->beginTransaction();
 
         $this->repository = new DoctrineCartRepository($this->em);
-        $this->addHandler = new AddProductToCartHandler($this->repository);
+
+        $eventBus = new EventBus(
+            $this->createMock(EventDispatcherInterface::class)
+        );
+
+        $this->addHandler = new AddProductToCartHandler($this->repository, $eventBus);
     }
 
     public function testCartIsPersistedAndRestored(): void
     {
-        $cartId = Uuid::v4()->toRfc4122();
-        $product = new Product(Uuid::v4()->toRfc4122());
+        $cartId   = Uuid::v4()->toRfc4122();
+        $product  = new Product(Uuid::v4()->toRfc4122());
         $quantity = new Quantity(2);
-        $money = new Money(1200, new Currency('EUR'));
+        $money    = new Money(1200, new Currency('EUR'));
 
         ($this->addHandler)(new AddProductToCartCommand(
             $cartId,
@@ -66,7 +69,7 @@ class DoctrineCartRepositoryTest extends KernelTestCase
 
     public function testFindReturnsCartWhenItExists(): void
     {
-        $cartId = Uuid::v4()->toRfc4122();
+        $cartId  = Uuid::v4()->toRfc4122();
         $product = new Product(Uuid::v4()->toRfc4122());
 
         ($this->addHandler)(new AddProductToCartCommand(
@@ -93,7 +96,7 @@ class DoctrineCartRepositoryTest extends KernelTestCase
 
     public function testCartIsDeleted(): void
     {
-        $cartId = Uuid::v4()->toRfc4122();
+        $cartId  = Uuid::v4()->toRfc4122();
         $product = new Product(Uuid::v4()->toRfc4122());
 
         ($this->addHandler)(new AddProductToCartCommand(
@@ -111,10 +114,19 @@ class DoctrineCartRepositoryTest extends KernelTestCase
         $this->assertNull($this->repository->find($cartId), 'Cart should be null after deletion.');
     }
 
+    /**
+     * Rolls back database changes made during the test.
+     */
     protected function tearDown(): void
     {
-        parent::tearDown();
-        $this->em->createQuery('DELETE FROM App\Cart\Infrastructure\Persistence\Doctrine\CartItemEntity')->execute();
-        $this->em->createQuery('DELETE FROM App\Cart\Infrastructure\Persistence\Doctrine\CartEntity')->execute();
+        try {
+            $connection = $this->em->getConnection();
+
+            if ($connection->isTransactionActive()) {
+                $connection->rollBack();
+            }
+        } finally {
+            parent::tearDown();
+        }
     }
 }

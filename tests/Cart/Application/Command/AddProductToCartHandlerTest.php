@@ -1,17 +1,12 @@
 <?php
-
 namespace App\Tests\Cart\Application\Command;
 
-use App\Cart\Application\Command\AddProductToCartCommand;
-use App\Cart\Application\Command\AddProductToCartHandler;
-use App\Cart\Domain\Model\Cart;
-use App\Cart\Infrastructure\Persistence\Doctrine\CartEntity;
-use App\Cart\Domain\Model\Product;
-use App\Cart\Domain\Model\Quantity;
-use App\Cart\Domain\Model\Money;
+use App\Cart\Application\Command\AddProductToCart\AddProductToCartCommand;
+use App\Cart\Application\Command\AddProductToCart\AddProductToCartHandler;
 use App\Cart\Domain\Model\Currency;
-use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use App\Cart\Infrastructure\Persistence\Doctrine\CartEntity;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Uid\Uuid;
 
 class AddProductToCartHandlerTest extends KernelTestCase
@@ -25,23 +20,18 @@ class AddProductToCartHandlerTest extends KernelTestCase
 
         self::bootKernel();
 
-        $this->em = static::getContainer()->get(EntityManagerInterface::class);
+        $this->em      = static::getContainer()->get(EntityManagerInterface::class);
         $this->handler = static::getContainer()->get(AddProductToCartHandler::class);
 
-        // 🔄 Reset SQLite schema
-        $schemaTool = new \Doctrine\ORM\Tools\SchemaTool($this->em);
-        $metadata = $this->em->getMetadataFactory()->getAllMetadata();
-
-        $schemaTool->dropSchema($metadata);
-        $schemaTool->createSchema($metadata);
+        $this->em->getConnection()->beginTransaction();
     }
 
     public function test_it_adds_product_to_cart_and_persists_it(): void
     {
-        $cartId = Uuid::v4()->toRfc4122();
-        $product = Uuid::v4()->toRfc4122();
+        $cartId   = Uuid::v4()->toRfc4122();
+        $product  = Uuid::v4()->toRfc4122();
         $quantity = 2;
-        $price = 1500;
+        $price    = 1500;
         $currency = new Currency('EUR');
 
         $command = new AddProductToCartCommand(
@@ -67,11 +57,19 @@ class AddProductToCartHandlerTest extends KernelTestCase
         $this->assertSame($currency->code(), $item->getCurrency());
     }
 
+    /**
+     * Rolls back database changes made during the test.
+     */
     protected function tearDown(): void
     {
-        parent::tearDown();
+        try {
+            $connection = $this->em->getConnection();
 
-        $this->em->createQuery('DELETE FROM App\Cart\Infrastructure\Persistence\Doctrine\CartItemEntity')->execute();
-        $this->em->createQuery('DELETE FROM App\Cart\Infrastructure\Persistence\Doctrine\CartEntity')->execute();
+            if ($connection->isTransactionActive()) {
+                $connection->rollBack();
+            }
+        } finally {
+            parent::tearDown();
+        }
     }
 }

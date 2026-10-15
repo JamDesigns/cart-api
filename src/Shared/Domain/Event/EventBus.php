@@ -1,31 +1,21 @@
 <?php
-
 namespace App\Shared\Domain\Event;
+
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 class EventBus
 {
     /** @var DomainEvent[] */
     private array $events = [];
 
-    /** @var EventBus */
-    private static ?EventBus $instance = null;
-
-    // Private constructor to prevent direct creation
-    private function __construct() {}
-
     /**
-     * Get the single instance of EventBus.
+     * Creates the domain event bus.
      *
-     * @return EventBus
+     * @param EventDispatcherInterface $dispatcher
      */
-    public static function getInstance(): EventBus
-    {
-        if (self::$instance === null) {
-            self::$instance = new EventBus();
-        }
-
-        return self::$instance;
-    }
+    public function __construct(
+        private readonly EventDispatcherInterface $dispatcher
+    ) {}
 
     /**
      * Record a new domain event.
@@ -42,11 +32,11 @@ class EventBus
      */
     public function dispatchEvents(): void
     {
-        foreach ($this->events as $event) {
-            echo "Event Dispatched: " . $event->getName() . "\n";
-        }
-
-        // Clear events after dispatching
+        $events       = $this->events;
         $this->events = [];
+
+        foreach ($events as $event) {
+            $this->dispatcher->dispatch($event, $event->getName());
+        }
     }
 }

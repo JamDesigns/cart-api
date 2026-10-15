@@ -1,42 +1,52 @@
 <?php
-
 namespace App\Checkout\Infrastructure\Controller;
 
-use App\Checkout\Application\Command\CheckoutCartCommand;
-use App\Checkout\Application\Command\CheckoutCartHandler;
+use App\Cart\Application\Exception\CartNotFound;
+use App\Checkout\Application\Command\CheckoutCart\CheckoutCartCommand;
+use App\Checkout\Application\Command\CheckoutCart\CheckoutCartHandler;
+use App\Checkout\Application\Exception\CartEmpty;
+use Doctrine\DBAL\Exception\LockWaitTimeoutException;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Annotation\Route;
 
 class CheckoutController
 {
-    public function __construct(private readonly CheckoutCartHandler $handler) {}
+    public function __construct(private readonly CheckoutCartHandler $handler)
+    {}
 
     #[Route('/checkout/{cartId}', name: 'checkout_cart', methods: ['POST'])]
     public function __invoke(string $cartId): Response
     {
-        $message = 'Order created successfully';  // Default success message
-        $status = Response::HTTP_CREATED;  // Default HTTP status
-
         try {
-            $command = new CheckoutCartCommand($cartId);
-            $result = ($this->handler)($command);
+            $response = ($this->handler)(new CheckoutCartCommand($cartId));
 
-            // Handle different results from the handler
-            if ($result === 'cart_not_found') {
-                $message = 'Cart not found during checkout';
-                $status = Response::HTTP_NOT_FOUND;
-            } elseif ($result === 'cart_empty') {
-                $message = 'Cart is empty. Please add items to proceed.';
-                $status = Response::HTTP_BAD_REQUEST;
-            }
-
-            // Return the response with the appropriate message
-            return new JsonResponse(['message' => $message], $status);
-
-        } catch (\Throwable $e) {
-            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse(
+                $response->toArray(),
+                Response::HTTP_CREATED
+            );
+        } catch (CartNotFound $e) {
+            return new JsonResponse(
+                ['message' => 'Cart not found during checkout'],
+                Response::HTTP_NOT_FOUND
+            );
+        } catch (CartEmpty $e) {
+            return new JsonResponse(
+                ['message' => 'Cart is empty. Please add items to proceed.'],
+                Response::HTTP_BAD_REQUEST
+            );
+        } catch (UniqueConstraintViolationException $e) {
+            return new JsonResponse(
+                ['message' => 'Checkout conflict. The cart may have already been processed.'],
+                Response::HTTP_CONFLICT
+            );
+        } catch (LockWaitTimeoutException $e) {
+            return new JsonResponse(
+                ['message' => 'Checkout is temporarily unavailable due to a database lock. Please retry.'],
+                Response::HTTP_SERVICE_UNAVAILABLE,
+                ['Retry-After' => '1']
+            );
         }
     }
 }
-

@@ -1,11 +1,9 @@
 <?php
-
 namespace App\Cart\Infrastructure\Persistence\Doctrine;
 
-use Doctrine\ORM\Mapping as ORM;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\Common\Collections\ArrayCollection;
-use App\Cart\Infrastructure\Persistence\Doctrine\CartItemEntity;
+use Doctrine\Common\Collections\Collection;
+use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'carts')]
@@ -26,8 +24,8 @@ class CartEntity
 
     public function __construct(string $id)
     {
-        $this->id = $id;
-        $this->items = new ArrayCollection();
+        $this->id        = $id;
+        $this->items     = new ArrayCollection();
         $this->createdAt = new \DateTimeImmutable();
         $this->updatedAt = new \DateTimeImmutable();
     }
@@ -45,6 +43,18 @@ class CartEntity
     public function addItem(CartItemEntity $item): void
     {
         $this->items->add($item);
+    }
+
+    /**
+     * Removes an item from the cart.
+     *
+     * @param CartItemEntity $item
+     *
+     * @return void
+     */
+    public function removeItem(CartItemEntity $item): void
+    {
+        $this->items->removeElement($item);
     }
 
     public function setUpdatedAt(\DateTimeImmutable $updatedAt): void

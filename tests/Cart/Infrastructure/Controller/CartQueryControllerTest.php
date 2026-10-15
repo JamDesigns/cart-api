@@ -1,14 +1,15 @@
 <?php
-
 namespace App\Tests\Cart\Infrastructure\Controller;
 
-use App\Cart\Application\Command\AddProductToCartCommand;
-use App\Cart\Application\Command\AddProductToCartHandler;
+use App\Cart\Application\Command\AddProductToCart\AddProductToCartCommand;
+use App\Cart\Application\Command\AddProductToCart\AddProductToCartHandler;
 use App\Cart\Domain\Model\Currency;
 use App\Cart\Infrastructure\Persistence\Doctrine\DoctrineCartRepository;
-use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use App\Shared\Domain\Event\EventBus;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 class CartQueryControllerTest extends WebTestCase
 {
@@ -16,6 +17,7 @@ class CartQueryControllerTest extends WebTestCase
     private AddProductToCartHandler $addHandler;
     private EntityManagerInterface $em;
     private \Symfony\Bundle\FrameworkBundle\KernelBrowser $client;
+    private array $cartIds = [];
 
     protected function setUp(): void
     {
@@ -25,37 +27,38 @@ class CartQueryControllerTest extends WebTestCase
 
         $this->em = static::getContainer()->get(EntityManagerInterface::class);
 
-        $schemaTool = new \Doctrine\ORM\Tools\SchemaTool($this->em);
-        $metadata = $this->em->getMetadataFactory()->getAllMetadata();
-        $schemaTool->dropSchema($metadata);
-        $schemaTool->createSchema($metadata);
-
         $this->repository = new DoctrineCartRepository($this->em);
-        $this->addHandler = new AddProductToCartHandler($this->repository);
+
+        $eventBus = new EventBus(
+            $this->createMock(EventDispatcherInterface::class)
+        );
+
+        $this->addHandler = new AddProductToCartHandler($this->repository, $eventBus);
     }
 
+    /**
+     * Verifies that the carts endpoint returns the carts created by the test.
+     */
     public function test_it_returns_all_carts(): void
     {
-        $cart1Id = 'cart-1';
-        $product1 = Uuid::v4()->toRfc4122();
+        $cart1Id = Uuid::v4()->toRfc4122();
+        $cart2Id = Uuid::v4()->toRfc4122();
+
+        $this->cartIds = [$cart1Id, $cart2Id];
+
         $currency = new Currency('EUR');
 
-        // Add product to cart-1
         ($this->addHandler)(new AddProductToCartCommand(
             $cart1Id,
-            $product1,
+            Uuid::v4()->toRfc4122(),
             2,
             1000,
             $currency
         ));
 
-        $cart2Id = 'cart-2';
-        $product2 = Uuid::v4()->toRfc4122();
-
-        // Add product to cart-2
         ($this->addHandler)(new AddProductToCartCommand(
             $cart2Id,
-            $product2,
+            Uuid::v4()->toRfc4122(),
             1,
             2500,
             $currency
@@ -67,8 +70,34 @@ class CartQueryControllerTest extends WebTestCase
         $this->assertJson($this->client->getResponse()->getContent());
 
         $data = json_decode($this->client->getResponse()->getContent(), true);
-        $this->assertCount(2, $data);
-        $this->assertEquals($cart1Id, $data[0]['id']);
-        $this->assertEquals($cart2Id, $data[1]['id']);
+
+        $returnedCartIds = array_column($data, 'id');
+
+        $this->assertContains($cart1Id, $returnedCartIds);
+        $this->assertContains($cart2Id, $returnedCartIds);
+    }
+
+    /**
+     * Removes only the carts and cart items created by this test.
+     */
+    protected function tearDown(): void
+    {
+        try {
+            $connection = $this->em->getConnection();
+
+            foreach ($this->cartIds as $cartId) {
+                $connection->executeStatement(
+                    'DELETE FROM cart_items WHERE cart_id = :cartId',
+                    ['cartId' => $cartId]
+                );
+
+                $connection->executeStatement(
+                    'DELETE FROM carts WHERE id = :cartId',
+                    ['cartId' => $cartId]
+                );
+            }
+        } finally {
+            parent::tearDown();
+        }
     }
 }

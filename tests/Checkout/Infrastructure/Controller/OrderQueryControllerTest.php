@@ -1,36 +1,38 @@
 <?php
-
 namespace App\Tests\Checkout\Infrastructure\Controller;
 
-use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
-use Symfony\Bundle\FrameworkBundle\KernelBrowser;
-use Symfony\Component\Uid\Uuid;
-use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\Tools\SchemaTool;
 use App\Checkout\Infrastructure\Persistence\Doctrine\OrderEntity;
 use App\Checkout\Infrastructure\Persistence\Doctrine\OrderItemEntity;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\FrameworkBundle\KernelBrowser;
+use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\Uid\Uuid;
 
 class OrderQueryControllerTest extends WebTestCase
 {
     private EntityManagerInterface $em;
     private KernelBrowser $client;
+    private array $orderIds = [];
 
+    /**
+     * Creates two test orders using the existing database schema.
+     */
     protected function setUp(): void
     {
         echo "🧪 Running functional test: GET /orders (list all orders)\n";
 
-        $this->client = static::createClient(); // Inicializa kernel y cliente
-        $this->em = static::getContainer()->get(EntityManagerInterface::class);
+        $this->client = static::createClient();
+        $this->em     = static::getContainer()->get(EntityManagerInterface::class);
 
-        $schemaTool = new SchemaTool($this->em);
-        $schemaTool->dropSchema($this->em->getMetadataFactory()->getAllMetadata());
-        $schemaTool->createSchema($this->em->getMetadataFactory()->getAllMetadata());
+        $order1Id = Uuid::v4()->toRfc4122();
+        $order2Id = Uuid::v4()->toRfc4122();
 
-        // Seed data
-        $order1 = new OrderEntity('order-1', 3000, 'EUR');
+        $this->orderIds = [$order1Id, $order2Id];
+
+        $order1 = new OrderEntity($order1Id, 3000, 'EUR');
         $order1->addItem(new OrderItemEntity(Uuid::v4()->toRfc4122(), 1, 3000));
 
-        $order2 = new OrderEntity('order-2', 5000, 'EUR');
+        $order2 = new OrderEntity($order2Id, 5000, 'EUR');
         $order2->addItem(new OrderItemEntity(Uuid::v4()->toRfc4122(), 2, 2500));
 
         $this->em->persist($order1);
@@ -38,6 +40,9 @@ class OrderQueryControllerTest extends WebTestCase
         $this->em->flush();
     }
 
+    /**
+     * Verifies that the orders endpoint returns both test orders.
+     */
     public function test_it_returns_all_orders(): void
     {
         $this->client->request('GET', '/orders');
@@ -46,16 +51,35 @@ class OrderQueryControllerTest extends WebTestCase
         $this->assertJson($this->client->getResponse()->getContent());
 
         $data = json_decode($this->client->getResponse()->getContent(), true);
-        $this->assertCount(2, $data);
-        $this->assertEquals('order-1', $data[0]['id']);
-        $this->assertEquals('order-2', $data[1]['id']);
+
+        $returnedOrderIds = array_column($data, 'id');
+
+        foreach ($this->orderIds as $orderId) {
+            $this->assertContains($orderId, $returnedOrderIds);
+        }
     }
 
+    /**
+     * Removes only the orders and order items created by this test.
+     */
     protected function tearDown(): void
     {
-        parent::tearDown();
+        try {
+            $connection = $this->em->getConnection();
 
-        $this->em->createQuery('DELETE FROM App\Checkout\Infrastructure\Persistence\Doctrine\OrderItemEntity')->execute();
-        $this->em->createQuery('DELETE FROM App\Checkout\Infrastructure\Persistence\Doctrine\OrderEntity')->execute();
+            foreach ($this->orderIds as $orderId) {
+                $connection->executeStatement(
+                    'DELETE FROM order_items WHERE order_id = :orderId',
+                    ['orderId' => $orderId]
+                );
+
+                $connection->executeStatement(
+                    'DELETE FROM orders WHERE id = :orderId',
+                    ['orderId' => $orderId]
+                );
+            }
+        } finally {
+            parent::tearDown();
+        }
     }
 }

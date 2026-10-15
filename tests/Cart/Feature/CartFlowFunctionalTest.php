@@ -1,49 +1,43 @@
 <?php
-
 namespace App\Tests\Cart\Feature;
 
-use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
-use Symfony\Bundle\FrameworkBundle\KernelBrowser;
-use Symfony\Component\Uid\Uuid;
 use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\Tools\SchemaTool;
+use Symfony\Bundle\FrameworkBundle\KernelBrowser;
+use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\Uid\Uuid;
 
 class CartFlowFunctionalTest extends WebTestCase
 {
     private KernelBrowser $client;
     private EntityManagerInterface $em;
+    private ?string $cartId = null;
 
     protected function setUp(): void
     {
         echo "🧪 Running functional flow test: Cart Add → Get → Delete\n";
 
         $this->client = static::createClient();
-        $this->em = static::getContainer()->get(EntityManagerInterface::class);
-
-        $schemaTool = new SchemaTool($this->em);
-        $metadata = $this->em->getMetadataFactory()->getAllMetadata();
-
-        $schemaTool->dropSchema($metadata);
-        $schemaTool->createSchema($metadata);
+        $this->em     = static::getContainer()->get(EntityManagerInterface::class);
     }
 
     public function test_cart_flow_with_persistence(): void
     {
-        $cartId = Uuid::v4()->toRfc4122();
-        $product = Uuid::v4()->toRfc4122();
+        $cartId       = Uuid::v4()->toRfc4122();
+        $this->cartId = $cartId;
+        $product      = Uuid::v4()->toRfc4122();
 
         // ➕ Add product to cart
         $this->client->request(
             'POST',
-            "/cart/{$cartId}/items",
+            "/cart/{$cartId}/product",
             [],
             [],
             ['CONTENT_TYPE' => 'application/json'],
             json_encode([
-                'product' => $product,
-                'quantity' => 2,
+                'product'   => $product,
+                'quantity'  => 2,
                 'unitPrice' => 1000,
-                'currency' => 'EUR'
+                'currency'  => 'EUR',
             ])
         );
 
@@ -62,11 +56,11 @@ class CartFlowFunctionalTest extends WebTestCase
         $this->assertEquals($product, $responseData['items'][0]['product']);
 
         // 🗑️ Remove product
-        $this->client->request('DELETE', "/cart/{$cartId}/items/{$product}");
+        $this->client->request('DELETE', "/cart/{$cartId}/product/{$product}");
         $this->assertResponseIsSuccessful();
 
         $response = json_decode($this->client->getResponse()->getContent(), true);
-        $this->assertEquals('Product removed', $response['message']);
+        $this->assertEquals('Product removed from cart', $response['message']);
 
         // ✅ Confirm cart is now empty
         $this->client->request('GET', "/cart/{$cartId}");
@@ -75,10 +69,27 @@ class CartFlowFunctionalTest extends WebTestCase
         $this->assertEquals(0, $data['total']);
     }
 
+    /**
+     * Removes only the cart and cart items created by this test.
+     */
     protected function tearDown(): void
     {
-        parent::tearDown();
-        $this->em->createQuery('DELETE FROM App\Cart\Infrastructure\Persistence\Doctrine\CartItemEntity')->execute();
-        $this->em->createQuery('DELETE FROM App\Cart\Infrastructure\Persistence\Doctrine\CartEntity')->execute();
+        try {
+            if ($this->cartId !== null) {
+                $connection = $this->em->getConnection();
+
+                $connection->executeStatement(
+                    'DELETE FROM cart_items WHERE cart_id = :cartId',
+                    ['cartId' => $this->cartId]
+                );
+
+                $connection->executeStatement(
+                    'DELETE FROM carts WHERE id = :cartId',
+                    ['cartId' => $this->cartId]
+                );
+            }
+        } finally {
+            parent::tearDown();
+        }
     }
 }

@@ -18,7 +18,6 @@
         "symfony/asset": "7.3.*",
         "symfony/asset-mapper": "7.3.*",
         "symfony/console": "7.3.*",
-        "symfony/doctrine-messenger": "7.3.*",
         "symfony/dotenv": "7.3.*",
         "symfony/expression-language": "7.3.*",
         "symfony/flex": "^2.7.1",
@@ -95,6 +94,17 @@
         ],
         "db:migration:generate": [
             "php bin/console make:migration"
+        ],
+        "db:test:migrate": [
+            "php bin/console doctrine:migrations:migrate --env=test --no-interaction"
+        ],
+        "db:test:validate": [
+            "php bin/console doctrine:schema:validate --env=test"
+        ],
+        "db:test:reset": [
+            "php bin/console doctrine:database:drop --env=test --force --if-exists",
+            "php bin/console doctrine:database:create --env=test",
+            "@db:test:migrate"
         ]
     },
     "conflict": {

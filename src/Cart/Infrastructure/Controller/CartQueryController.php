@@ -1,37 +1,34 @@
 <?php
-
 namespace App\Cart\Infrastructure\Controller;
 
-use App\Cart\Domain\Repository\CartRepository;
+use App\Cart\Application\Query\GetCarts\GetCartsHandler;
+use App\Cart\Application\Query\GetCarts\GetCartsQuery;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 
 class CartQueryController
 {
-    public function __construct(private readonly CartRepository $repository) {}
+    public function __construct(
+        private readonly GetCartsHandler $handler
+    ) {}
 
+    /**
+     * Retrieves all carts.
+     *
+     * @return Response
+     */
     #[Route('/carts', name: 'get_all_carts', methods: ['GET'])]
     public function __invoke(): Response
     {
-        $carts = $this->repository->all();
+        $carts = ($this->handler)(new GetCartsQuery());
 
-        $response = array_map(function ($cart) {
-            return [
-                'id'       => $cart->id(),
-                'total'    => $cart->total()->amount(),
-                'currency' => $cart->total()->currency()->code(),
-                'items'    => array_map(function ($item) {
-                    return [
-                        'product'    => $item->product()->toPrimitives(),
-                        'quantity'   => $item->quantity()->toPrimitives(),
-                        'unitPrice'  => $item->unitPrice()->amount(),
-                        'total'      => $item->totalPrice()->amount(),
-                    ];
-                }, $cart->items()),
-            ];
-        }, $carts);
-
-        return new JsonResponse($response, Response::HTTP_OK);
+        return new JsonResponse(
+            array_map(
+                static fn($cart) => $cart->toArray(),
+                $carts
+            ),
+            Response::HTTP_OK
+        );
     }
 }

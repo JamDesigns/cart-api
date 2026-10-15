@@ -3,7 +3,7 @@
 
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
-parameters:
+parameters: {}
 
 services:
     # default configuration for services in *this* file
@@ -34,17 +34,8 @@ services:
         autowire: true
         autoconfigure: true
 
-    App\Cart\Infrastructure\Controller\CartDeletionController:
-        public: true
-        autowire: true
-        autoconfigure: true
-
     App\Cart\Infrastructure\Controller\CartQueryController:
         public: true
-        autowire: true
-        autoconfigure: true
-
-    App\Cart\Application\Command\ClearCartHandler:
         autowire: true
         autoconfigure: true
 
@@ -61,3 +52,6 @@ services:
 
     App\Checkout\Domain\Repository\OrderRepository:
         alias: App\Checkout\Infrastructure\Persistence\Doctrine\DoctrineOrderRepository
+
+    App\Shared\Application\Transaction\TransactionManager:
+        alias: App\Shared\Infrastructure\Persistence\Doctrine\DoctrineTransactionManager
