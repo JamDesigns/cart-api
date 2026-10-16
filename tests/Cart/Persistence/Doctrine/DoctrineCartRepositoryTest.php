@@ -33,7 +33,7 @@ class DoctrineCartRepositoryTest extends KernelTestCase
         $this->repository = new DoctrineCartRepository($this->em);
 
         $eventBus = new EventBus(
-            $this->createMock(EventDispatcherInterface::class)
+            $this->createStub(EventDispatcherInterface::class)
         );
 
         $this->addHandler = new AddProductToCartHandler($this->repository, $eventBus);

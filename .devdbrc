@@ -1,6 +1,6 @@
 [
-  {
-    "type": "sqlite",
-    "path": "c:\\laragon\\www\\siroko-cart-api\\var\\data.db"
-  }
+    {
+        "type": "sqlite",
+        "path": "c:\\laragon\\www\\cart-api\\var\\data.db"
+    }
 ]

@@ -1,0 +1,42 @@
+name: Tests
+
+on:
+    pull_request:
+        branches:
+            - master
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+jobs:
+    tests:
+        name: PHPUnit (PHP 8.4)
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: "8.4"
+                  extensions: ctype, iconv, pdo_sqlite, sqlite3, mbstring, intl, gd
+                  coverage: none
+                  tools: composer:v2
+
+            - name: Install dependencies
+              run: composer install --no-interaction --prefer-dist --no-progress --optimize-autoloader
+
+            - name: Prepare test database directory
+              run: mkdir -p var/test-data
+
+            - name: Run database migrations
+              run: composer run db:test:migrate
+
+            - name: Validate Doctrine schema
+              run: composer run db:test:validate
+
+            - name: Run PHPUnit
+              run: php bin/phpunit

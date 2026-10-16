@@ -25,7 +25,7 @@ class CartTest extends TestCase
         $this->repo = new InMemoryCartRepository();
 
         $eventBus = new EventBus(
-            $this->createMock(EventDispatcherInterface::class)
+            $this->createStub(EventDispatcherInterface::class)
         );
 
         $this->addHandler    = new AddProductToCartHandler($this->repo, $eventBus);
