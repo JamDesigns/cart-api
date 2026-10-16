@@ -18,7 +18,7 @@ class UpdateProductQuantityHandlerIntegrationTest extends TestCase
         echo "✏️  Running integration test: UpdateProductQuantityHandler\n";
 
         $repo     = new InMemoryCartRepository();
-        $eventBus = new EventBus($this->createMock(EventDispatcherInterface::class));
+        $eventBus = new EventBus($this->createStub(EventDispatcherInterface::class));
 
         $addHandler    = new AddProductToCartHandler($repo, $eventBus);
         $updateHandler = new UpdateProductQuantityHandler($repo, $eventBus);
@@ -46,7 +46,7 @@ class UpdateProductQuantityHandlerIntegrationTest extends TestCase
         echo "💥 Running integration test: update non-existent product quantity\n";
 
         $repo     = new InMemoryCartRepository();
-        $eventBus = new EventBus($this->createMock(EventDispatcherInterface::class));
+        $eventBus = new EventBus($this->createStub(EventDispatcherInterface::class));
 
         $updateHandler = new UpdateProductQuantityHandler($repo, $eventBus);
 

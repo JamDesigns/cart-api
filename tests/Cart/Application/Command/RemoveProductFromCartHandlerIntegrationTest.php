@@ -18,7 +18,7 @@ class RemoveProductFromCartHandlerIntegrationTest extends TestCase
         echo "🗑️  Running integration test: RemoveProductFromCartHandler\n";
 
         $repo     = new InMemoryCartRepository();
-        $eventBus = new EventBus($this->createMock(EventDispatcherInterface::class));
+        $eventBus = new EventBus($this->createStub(EventDispatcherInterface::class));
 
         $addHandler    = new AddProductToCartHandler($repo, $eventBus);
         $removeHandler = new RemoveProductFromCartHandler($repo, $eventBus);

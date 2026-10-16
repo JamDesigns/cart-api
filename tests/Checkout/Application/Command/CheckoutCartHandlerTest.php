@@ -27,7 +27,7 @@ class CheckoutCartHandlerTest extends TestCase
         $product  = new Product('44444444-4444-4444-4444-444444444444');
         $currency = new Currency('EUR');
 
-        $eventDispatcher = $this->createMock(EventDispatcherInterface::class);
+        $eventDispatcher = $this->createStub(EventDispatcherInterface::class);
         $eventBus        = new EventBus($eventDispatcher);
 
         $transactionManager = $this->createMock(TransactionManager::class);

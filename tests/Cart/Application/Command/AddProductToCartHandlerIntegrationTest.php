@@ -18,7 +18,7 @@ class AddProductToCartHandlerIntegrationTest extends TestCase
         echo "🧪 Running integration test: AddProductToCartHandler\n";
 
         $repo     = new InMemoryCartRepository();
-        $eventBus = new EventBus($this->createMock(EventDispatcherInterface::class));
+        $eventBus = new EventBus($this->createStub(EventDispatcherInterface::class));
         $handler  = new AddProductToCartHandler($repo, $eventBus);
 
         $cartId    = 'test-cart-1';
@@ -45,7 +45,7 @@ class AddProductToCartHandlerIntegrationTest extends TestCase
         echo "➕ Running integration test: update quantity if product already exists in cart\n";
 
         $repo     = new InMemoryCartRepository();
-        $eventBus = new EventBus($this->createMock(EventDispatcherInterface::class));
+        $eventBus = new EventBus($this->createStub(EventDispatcherInterface::class));
         $handler  = new AddProductToCartHandler($repo, $eventBus);
 
         $cartId   = 'test-cart-2';
@@ -68,7 +68,7 @@ class AddProductToCartHandlerIntegrationTest extends TestCase
         echo "🗑️  Running integration test: remove product from cart (via handler)\n";
 
         $repo          = new InMemoryCartRepository();
-        $eventBus      = new EventBus($this->createMock(EventDispatcherInterface::class));
+        $eventBus      = new EventBus($this->createStub(EventDispatcherInterface::class));
         $addHandler    = new AddProductToCartHandler($repo, $eventBus);
         $removeHandler = new RemoveProductFromCartHandler($repo, $eventBus);
 
